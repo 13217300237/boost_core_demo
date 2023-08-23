@@ -1,0 +1,15 @@
+rootProject.name = "nativepro"
+include ':app'
+include ':boost_core'
+
+apply from: "boost_core/flutter_config.gradle"
+
+if (flutterModuleTestMode) {
+    setBinding(new Binding([gradle: this]))
+    evaluate(new File(
+            settingsDir.parentFile,
+            "$flutterModuleName/.android/include_flutter.groovy"
+    ))
+    include ":$flutterModuleName"
+    project(":$flutterModuleName").projectDir = new File("../$flutterModuleName")
+}

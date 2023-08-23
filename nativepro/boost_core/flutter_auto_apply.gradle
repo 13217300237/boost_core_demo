@@ -1,0 +1,136 @@
+def copyFile(sourceFilePath, destinationFilePath) {
+    def sourceFile = file(sourceFilePath)
+    def destinationFile = file(destinationFilePath)
+    ant.copy(todir: destinationFile.parent) {
+        fileset(file: sourceFile)
+    }
+}
+
+void copyFiles(String sourceDirPath, String targetDirPath) {
+    File sourceDir = file(sourceDirPath)
+    File destinationDir = file(targetDirPath)
+
+    if (!sourceDir.exists()) {
+        println("原始目录不存在")
+        return
+    }
+
+    if (!destinationDir.exists()) {
+        destinationDir.mkdirs()
+    }
+
+    FileTree sourceFiles = fileTree(dir: sourceDir)
+
+    sourceFiles.each { sourceFile ->
+        File destinationFile = new File(destinationDir, sourceDir.relativePath(sourceFile).toString())
+        copyFile(sourceFile, destinationFile)
+    }
+}
+
+// 此任务用于自动下载 kbz_b端的所需的 so和aar到正确的位置
+
+// 1. 通过git clone ssh://git@codehub-dg-g.huawei.com:2222/zWX1245985/flutter_product_repo.git 到目录工程
+// 2. 此仓库下可能有多个项目的flutter 二进制文件，他们是按照项目名区分的，所以 用当前的项目名，找到正确的子目录
+// 3. 找到libs目录，拷贝它，然后放到 boost_core模块根目录下，拷贝之前先删除原来的libs
+// 4. 找到jniLibs目录，将它整个 找到 src/main下，如果 src/main/jniLibs目录已存在，就删除它，再拷贝
+
+
+boolean isWindows() {
+    return System.getProperty('os.name').toLowerCase().contains('win')
+}
+
+
+boolean isMac() {
+    return System.getProperty('os.name').toLowerCase().contains('mac')
+}
+
+boolean isLinux() {
+    return System.getProperty('os.name').toLowerCase().contains('linux')
+}
+
+boolean deleteDir() {
+    // 检查 repoName 目录是否存在，如果存在，先删除
+    def flutterProductRepo = file("$repoName")
+    if (flutterProductRepo.exists()) {
+        def deleteRes = deleteRepo()
+        if (!deleteRes) {
+            println("$repoName 目录删除失败，请手动删除后重试")
+            return false
+        }
+    }
+}
+
+/**
+ * 将 flutter离线依赖资源下载到我项目本地
+ *
+ */
+boolean cloneFlutterOfflineRelay() {
+
+    println "当前电脑系统为： ${System.getProperty('os.name')}"
+
+    def gitClone = "git clone $gitRepoUrl"
+
+    if (isWindows()) {
+        deleteDir()
+        def result = project.exec {
+            commandLine "cmd", "/c", "$gitClone"
+        }
+        println "clone 命令执行完成，exitValue 是: ${result.exitValue}"
+    } else if (isMac()) {
+        deleteDir()
+        Process process = Runtime.getRuntime().exec(gitClone)
+        def exitValue = process.waitFor()
+        println "clone 命令执行完成，exitValue 是: ${exitValue}"
+        return true
+    } else if (isLinux()) {
+        println "linux系统下，直接通过jenkins配置了多git源，直接拉的 ${repoName}，所有无需gradle任务去下载"
+
+        return true
+    } else {
+        deleteDir()
+        println "不支持的电脑格式，仅支持win与mac以及 linux"
+        return false
+    }
+
+    println "从云端下载flutter模块离线资源成功"
+
+    return true
+}
+
+/**
+ * 将所有的aar包放置到boost_core模块的libs中
+ */
+void applyAar() {
+    def apkLibPath = "$repoName/$proName/libs" // apk解压之后的so存放目录
+    def targetPath = "libs" // so将要拷贝到的目录
+    copyFiles(apkLibPath, targetPath)
+    println "同步aar资源成功"
+}
+
+/**
+ * 将所有的aar包放置到boost_core模块的libs中
+ */
+void applySo() {
+    def apkLibPath = "$repoName/$proName/jniLibs" // apk解压之后的so存放目录
+    def targetPath = "src/main/jniLibs/" // so将要拷贝到的目录
+    copyFiles(apkLibPath, targetPath)
+    println "同步so资源成功"
+}
+
+boolean deleteRepo() {
+    def deleteRes = delete "$repoName" // 然后删除原 repoName 目录
+    println "删除 $repoName 的结果是 $deleteRes"
+    return deleteRes
+}
+
+task flutter_sync {
+    group = 'flutter' // 必须要加分组，才能显示在右侧的gradle面板中
+    description = '从云端下载flutter模块的离线资源到我本地'
+    doLast {
+        if (cloneFlutterOfflineRelay()) {
+            applyAar()
+            applySo()
+            deleteRepo()
+        }
+    }
+}

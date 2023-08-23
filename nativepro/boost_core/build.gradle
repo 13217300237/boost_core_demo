@@ -1,0 +1,61 @@
+plugins {
+    id 'com.android.library'
+}
+
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply from: "flutter_config.gradle"
+apply from: "flutter_auto_apply.gradle"
+apply from: "flutter_auto_publish.gradle"
+
+android {
+    compileSdkVersion 33
+
+    defaultConfig {
+        minSdkVersion 24
+        targetSdkVersion 33
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    sourceSets {
+        main {
+            if (flutterModuleTestMode) {
+                jniLibs.srcDirs = [] // 空数组表示禁用 jniLibs 目录
+            } else {
+                jniLibs.srcDirs = ['src/main/jniLibs'] // 设置 jniLibs 目录
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.4.1'
+    implementation 'com.google.code.gson:gson:2.8.2'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.6.0"
+
+    if (flutterModuleTestMode) {
+        // 使用工程
+        implementation project(':flutter')
+        implementation project(':flutter_boost')
+
+    } else {
+        // 使用AAR
+        implementation fileTree(dir: 'libs', include: ['*.aar', '*.jar'])
+        implementation 'io.flutter:flutter_embedding_release:1.0.0-d3ea636dc5d16b56819f3266241e1f708979c233'
+    }
+
+
+}

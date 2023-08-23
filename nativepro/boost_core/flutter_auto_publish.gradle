@@ -1,0 +1,224 @@
+import java.text.SimpleDateFormat
+
+String findFlutterRoot() {
+    def rootDir = rootProject.projectDir
+    def flutterRoot = file("$rootDir/../$flutterModuleName")
+    println "$flutterModuleName 项目的绝对路径: " + flutterRoot
+
+    return flutterRoot
+}
+
+void buildAar(String flutterRoot) {
+    def commandCd = "cd ${flutterRoot}"
+    def commandFlutterBuildAar = "flutter build aar --no-profile"
+    def result = project.exec {
+        commandLine "cmd", "/c", "$commandCd && $commandFlutterBuildAar"
+    }
+    println "打aar包的命令执行完成，exitValue 是: ${result.exitValue}"
+    if (result.exitValue != 0) {
+        println "aar打包失败，尝试在 $flutterRoot\\.android\\gradle.properties中添加 org.gradle.java.home=D://env//androidStudio//jbr "
+        println "打开笔记本的热点功能有可能也会引起打aar失败，请关闭热点再试 "
+    }
+}
+
+void buildApk(String flutterRoot) {
+    def commandCd = "cd ${flutterRoot}"
+    def commandFlutterBuildApk = "flutter build apk --release"
+    def result = project.exec {
+        commandLine "cmd", "/c", "$commandCd && $commandFlutterBuildApk"
+    }
+    println "打apk包的命令执行完成，exitValue 是: ${result.exitValue}"
+}
+
+def copyFile(sourceFilePath, destinationFilePath) {
+    def sourceFile = file(sourceFilePath)
+    def destinationFile = file(destinationFilePath)
+    ant.copy(todir: destinationFile.parent) {
+        fileset(file: sourceFile)
+    }
+}
+
+void copyFiles(String sourceDirPath, String targetDirPath) {
+    File sourceDir = file(sourceDirPath)
+    File destinationDir = file(targetDirPath)
+
+    if (!sourceDir.exists()) {
+        println("原始目录不存在")
+        return
+    }
+
+    if (!destinationDir.exists()) {
+        destinationDir.mkdirs()
+    }
+
+    FileTree sourceFiles = fileTree(dir: sourceDir)
+
+    sourceFiles.each { sourceFile ->
+        File destinationFile = new File(destinationDir, sourceDir.relativePath(sourceFile).toString())
+        copyFile(sourceFile, destinationFile)
+    }
+}
+
+/**
+ * 将 flutter离线依赖资源下载到我项目本地
+ *
+ */
+boolean cloneFlutterOfflineRelay() {
+
+    println("cloneFlutterOfflineRelay->$repoName")
+
+    // 检查 repoName 目录是否存在，如果存在，先删除
+    def flutterProductRepo = file("$repoName")
+    if (flutterProductRepo.exists()) {
+        def deleteRes = deleteRepo()
+        if (!deleteRes) {
+            println("$repoName 目录删除失败，请手动删除后重试")
+            return false
+        }
+    }
+
+    println("gitRepoUrl-> $gitRepoUrl")
+
+    def result = project.exec {
+        commandLine "cmd", "/c", "git clone $gitRepoUrl"
+    }
+    println "clone 命令执行完成，exitValue 是: ${result.exitValue}"
+    println "从云端下载flutter模块离线资源成功"
+
+    return true
+}
+
+void pushFlutterRepoCommit() {
+    def commandCd = "cd $repoName"
+    def cmdAdd = "git add --all"
+    def cmdCommit = "git commit -m \"sync\""
+    def cmdPush = "git push origin"
+    def result = project.exec {
+        commandLine "cmd", "/c", "$commandCd && $cmdAdd && $cmdCommit && $cmdPush"
+    }
+    println "提交的命令执行完成，exitValue 是: ${result.exitValue}"
+}
+
+/**
+ * 将所有的aar包放置到boost_core模块的libs中
+ */
+void applyAar() {
+    def localAar = "libs" // so将要拷贝到的目录
+    def remoteAar = "$repoName/$proName/libs" // apk解压之后的so存放目录
+//    if (file(remoteAar).exists()) {
+//        delete remoteAar
+//    }
+
+    copyFiles(localAar, remoteAar)
+    println "同步aar资源成功"
+}
+
+/**
+ * 将所有的aar包放置到boost_core模块的libs中
+ */
+void applySo() {
+    def localSo = "src/main/jniLibs/" // so将要拷贝到的目录
+    def remoteSo = "$repoName/$proName/jniLibs" // apk解压之后的so存放目录
+    if (file(remoteSo).exists()) {
+        delete remoteSo
+    }
+    copyFiles(localSo, remoteSo)
+    println "同步so资源成功"
+}
+
+boolean deleteRepo() {
+    def deleteRes = delete "$repoName" // 然后删除原 flutter_product_repo 目录
+    println "删除$repoName 的结果是 $deleteRes"
+    return deleteRes
+}
+
+void editReadMeFile() {
+    def file = new File("$repoName/README.md")
+
+    Date date = new Date()
+
+    // 获取当前日期和时间
+    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    String currentDateAndTime = dateFormat.format(date)
+
+    println "当前日期和时间：" + currentDateAndTime
+
+    // 追加文件内容
+    def content = "$currentDateAndTime 已同步flutter资源 \n "
+
+    // 创建 FileWriter 对象，并将第二个参数设为 true，表示追加模式
+    def fileWriter = new FileWriter(file, true)
+
+    // 写入内容到文件
+    fileWriter.write(content)
+
+    // 关闭文件写入流
+    fileWriter.close()
+}
+
+/**
+ * flutter模块自动发布流程
+ * 按照以下步骤执行
+ * 1. 确保在原生+flutter工程联合调试已结束，两侧代码已封版
+ * 2. 执行生成aar的指令 flutter build aar
+ * 3. 将生成的所有aar包中筛选出 release版本的，将他们都拷贝到 libs目录下，如果原来就存在，则覆盖
+ * 4. 执行生成apk的指令 flutter build apk --release
+ * 5. 解压生成的apk文件，找到其中的 lib目录，这目录下都是 so文件，将他们拷贝到 src/main/jniLibs/下
+ * 6. 删除之前解压的apk文件目录
+ * 7. 删除其中的所有 libapp.so文件，因为它与 flutter_release.aar重复，如果不删，运行flutter模块会报错
+ *
+ */
+task flutter_publish {
+    group = 'flutter' // 必须要加分组，才能显示在右侧的gradle面板中
+    description = '自动发布flutter离线资源到当前项目，并上传到云端'
+    doLast {
+        println("1. 确保在原生+flutter工程联合调试已结束，两侧代码已封版")
+        def flutterRoot = findFlutterRoot()
+
+        println("2. 执行生成aar的指令 flutter build aar")
+        buildAar(flutterRoot)
+
+        println("3. 将生成的所有aar包中筛选出 release版本的，将他们都拷贝到 libs目录下，如果原来就存在，则覆盖")
+        def directoryPath = "$flutterRoot\\build\\host\\outputs\\repo"
+        def aarFiles = fileTree(dir: directoryPath, include: '**/*_release-*.aar')
+        // 把这些文件拷贝到 libs 目录
+        aarFiles.each { aarFile ->
+            println "Found AAR file: ${aarFile.getAbsolutePath()}"
+            String fileName = aarFile.name
+            copyFile(aarFile.getAbsolutePath(), "libs\\${fileName}")
+        }
+
+        println("4. 执行生成apk的指令 flutter build apk --release")
+        buildApk(flutterRoot)
+
+        println("5. 解压生成的apk文件，找到其中的 lib目录，这目录下都是 so文件，将他们拷贝到 src/main/jniLibs/下")
+        def apkFilePath = "$flutterRoot\\build\\host\\outputs\\apk\\release\\app-release.apk"
+        // apk文件地址
+        def targetApkDirPath = "apkFiles\\" // 解压到这个目录
+        // 解压apk文件
+        ant.unzip(src: apkFilePath, dest: targetApkDirPath)
+        def apkLibPath = "apkFiles/lib/" // apk解压之后的so存放目录
+        def targetPath = "src/main/jniLibs/" // so将要拷贝到的目录
+        copyFiles(apkLibPath, targetPath)
+
+        println("6. 删除之前解压的apk文件目录")
+        delete targetApkDirPath
+
+        println("7. 删除其中的所有 libapp.so文件，因为它与 flutter_release.aar重复，如果不删，运行flutter模块会报错")
+        def libappSoFiles = fileTree(dir: targetPath, include: '**/libapp.so')
+        libappSoFiles.each {
+            it.delete()
+        }
+
+
+        println("8. 将最新的flutter so 和 aar发布到codehub...")
+        cloneFlutterOfflineRelay()
+        applyAar()
+        applySo()
+        editReadMeFile()
+        pushFlutterRepoCommit()
+        deleteRepo()
+
+        println "发布flutter模块成功"
+    }
+}

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.boost_core">
+
+    <application>
+        <activity
+            android:name="com.idlefish.flutterboost.containers.FlutterBoostActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density"
+            android:hardwareAccelerated="true"
+            android:theme="@style/Theme.AppCompat"
+            android:windowSoftInputMode="adjustResize">
+
+        </activity>
+
+        <activity
+            android:name="com.kbz_b.flutter.TransparencyPageActivity"
+            android:configChanges="screenSize|smallestScreenSize|orientation|keyboardHidden"
+            android:exported="true"
+            android:theme="@style/TranslucentTheme"
+            android:windowSoftInputMode="adjustResize"></activity>
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2"></meta-data>
+    </application>
+
+</manifest>

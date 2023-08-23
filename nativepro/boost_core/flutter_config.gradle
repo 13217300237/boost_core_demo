@@ -1,0 +1,19 @@
+// 常规开发，不要修改此文件！！！！！
+// 非 flutter 开发者不要动这个文件！！！重要的事情说三遍！
+// 非 flutter 开发者不要动这个文件！！！重要的事情说三遍！
+// 非 flutter 开发者不要动这个文件！！！重要的事情说三遍！
+ext {
+    // flutter模块是否处于调试状态
+    // - true  调试状态直接依赖   flutter工程，
+    // - false 非调试状态则是依赖 flutter工程生成的aar包
+    flutterModuleTestMode = false
+    // flutter项目的名称
+    flutterModuleName = "flutter_module"
+
+    // 产物仓库地址
+    gitRepoUrl = "ssh://git@codehub-dg-g.huawei.com:2222/zWX1245985/flutter_repo_just_for_test.git"
+    // 仓库名称
+    repoName = "flutter_repo_just_for_test"
+    // 一个仓库可能存放不同的flutter项目的产物，故 使用proName来区分
+    proName = "kbz_b"
+}
