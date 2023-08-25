@@ -3,6 +3,9 @@ import 'package:flutter_boost/flutter_boost.dart';
 import 'package:flutter_module/test2_widget.dart';
 import 'package:flutter_module/test_widget.dart';
 
+///
+/// test push to git
+///
 class BoostCore {
   static void init() {
     PageVisibilityBinding.instance
