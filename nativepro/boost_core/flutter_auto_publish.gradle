@@ -105,9 +105,6 @@ void pushFlutterRepoCommit() {
 void applyAar() {
     def localAar = "libs" // so将要拷贝到的目录
     def remoteAar = "$repoName/$proName/libs" // apk解压之后的so存放目录
-//    if (file(remoteAar).exists()) {
-//        delete remoteAar
-//    }
 
     copyFiles(localAar, remoteAar)
     println "同步aar资源成功"
@@ -156,6 +153,7 @@ void editReadMeFile() {
     fileWriter.close()
 }
 
+
 /**
  * flutter模块自动发布流程
  * 按照以下步骤执行
@@ -187,6 +185,10 @@ task flutter_publish {
             String fileName = aarFile.name
             copyFile(aarFile.getAbsolutePath(), "libs\\${fileName}")
         }
+
+        def flutterEmbeddingJar = new File(flutterEmbeddingPath)
+        copyFile(flutterEmbeddingJar.getAbsolutePath(), "libs\\${flutterEmbeddingJar.name}")
+        println("flutterEmbeddingJar 拷贝完成")
 
         println("4. 执行生成apk的指令 flutter build apk --release")
         buildApk(flutterRoot)

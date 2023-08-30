@@ -54,7 +54,6 @@ dependencies {
     } else {
         // 使用AAR
         implementation fileTree(dir: 'libs', include: ['*.aar', '*.jar'])
-        implementation 'io.flutter:flutter_embedding_release:1.0.0-d3ea636dc5d16b56819f3266241e1f708979c233'
     }
 
 
