@@ -1,7 +1,7 @@
 def copyFile(sourceFilePath, destinationFilePath) {
     def sourceFile = file(sourceFilePath)
     def destinationFile = file(destinationFilePath)
-    ant.copy(todir: destinationFile.parent) {
+    ant.copy(todir: destinationFile.parent, overwrite: true) {
         fileset(file: sourceFile)
     }
 }
