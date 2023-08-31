@@ -17,7 +17,7 @@ ext {
     // 一个仓库可能存放不同的flutter项目的产物，故 使用proName来区分
     proName = "kbz_b"
 
-    // flutter_embedding.aar路径
+    // flutter_embedding.jar路径
     flutterEmbeddingPath = "C:\\Users\\zwx1245985\\.gradle\\caches\\modules-2\\files-2.1\\io.flutter\\flutter_embedding_release\\1.0.0-d3ea636dc5d16b56819f3266241e1f708979c233\\8e3bedcfdcc2a45b49cd20473a609edbff3c3e52\\flutter_embedding_release-1.0.0-d3ea636dc5d16b56819f3266241e1f708979c233.jar"
 
 }
