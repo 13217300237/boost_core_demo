@@ -25,15 +25,6 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-
-    tasks.matching {
-        it.name.startsWith("install") || it.name.startsWith("assemble")
-    }.all { task ->
-        // 在这里对符合条件的任务进行操作
-        // 例如依赖、配置等
-        println("找到所有assemble和install开头的任务 ${task.name}")
-        task.dependsOn(":boost_core:flutter_sync")
-    }
 }
 
 repositories {
