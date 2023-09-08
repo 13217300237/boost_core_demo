@@ -40,11 +40,9 @@ android {
         }
     }
 
-    // 让 assemble 任务依赖 miniapp aar 的 同步任务
     tasks.matching {
         it.name.startsWith("preBuild")
     }.all { task ->
-        println "找到 preBuild 任务: ${task.name}"
         task.dependsOn("flutter_sync")
     }
 }

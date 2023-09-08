@@ -12,7 +12,7 @@ ext {
 
     // 产物仓库地址
     gitRepoUrl = "ssh://git@codehub-dg-g.huawei.com:2222/zWX1245985/flutter_repo_just_for_test.git"
-    // 产物仓库查询提交记录的命令
+    // 分支
     gitBranchName = "master"
 
 
