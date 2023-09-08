@@ -1,3 +1,5 @@
+import java.text.SimpleDateFormat
+
 def copyFile(sourceFilePath, destinationFilePath) {
     def sourceFile = file(sourceFilePath)
     def destinationFile = file(destinationFilePath)
@@ -60,6 +62,42 @@ boolean deleteDir() {
     }
 }
 
+String getOutput(Process process) {
+    // 获取命令执行的标准输出流
+    def stdout = new ByteArrayOutputStream()
+    process.waitForProcessOutput(stdout, System.err)
+    def output = stdout.toString().trim()
+    return output
+}
+
+String getCmdResult(String cmd) {
+    if (isWindows()) {
+        return getOutput(cmd.execute())
+    } else if (isMac()) {
+        return getOutput(Runtime.getRuntime().exec(cmd))
+    } else {
+        return null
+    }
+}
+
+//
+def executeCmd(String cmd) {
+    if (isWindows()) {
+        def result = project.exec {
+            commandLine "cmd", "/c", "$cmd"
+        }
+        println "$cmd 命令执行完成，exitValue 是: ${result.exitValue}"
+        return true
+    } else if (isMac()) {
+        Process process = Runtime.getRuntime().exec(cmd)
+        def exitValue = process.waitFor()
+        println "clone 命令执行完成，exitValue 是: ${exitValue}"
+        return true
+    } else {
+        return false
+    }
+}
+
 /**
  * 将 flutter离线依赖资源下载到我项目本地
  *
@@ -70,31 +108,20 @@ boolean cloneFlutterOfflineRelay() {
 
     def gitClone = "git clone $gitRepoUrl"
 
-    if (isWindows()) {
-        deleteDir()
-        def result = project.exec {
-            commandLine "cmd", "/c", "$gitClone"
-        }
-        println "clone 命令执行完成，exitValue 是: ${result.exitValue}"
-    } else if (isMac()) {
-        deleteDir()
-        Process process = Runtime.getRuntime().exec(gitClone)
-        def exitValue = process.waitFor()
-        println "clone 命令执行完成，exitValue 是: ${exitValue}"
-        return true
-    } else if (isLinux()) {
+    if (isLinux()) {
         println "linux系统下，直接通过jenkins配置了多git源，直接拉的 ${repoName}，所有无需gradle任务去下载"
-
         return true
-    } else {
-        deleteDir()
-        println "不支持的电脑格式，仅支持win与mac以及 linux"
-        return false
     }
 
-    println "从云端下载flutter模块离线资源成功"
+    deleteDir() // clone之前先删除原目录
+    boolean b = executeCmd(gitClone)
+    if (b) {
+        println "从云端下载flutter模块离线资源成功"
+    } else {
+        println "不支持的电脑格式，仅支持win与mac以及 linux"
+    }
+    return b
 
-    return true
 }
 
 /**
@@ -123,14 +150,57 @@ boolean deleteRepo() {
     return deleteRes
 }
 
+void rewriteVersion(String newVersion) {
+    def file = new File("flutterVersion.txt")
+    // 创建 FileWriter 对象，并将第二个参数设为 true，表示追加模式
+    def fileWriter = new FileWriter(file, false)
+    // 写入内容到文件
+    fileWriter.write(newVersion)
+    // 关闭文件写入流
+    fileWriter.close()
+}
+
+String readVersion() {
+    def file = new File("flutterVersion.txt")
+    if (file.exists()) {
+        return file.text
+    } else {
+        return null
+    }
+}
+
+boolean equalsWithNull(String str1, String str2) {
+    if (str1 == null && str2 == null) {
+        return true;
+    }
+    if (str1 == null || str2 == null) {
+        return false
+    }
+    return str1 == str2
+}
+
 task flutter_sync {
     group = 'flutter' // 必须要加分组，才能显示在右侧的gradle面板中
     description = '从云端下载flutter模块的离线资源到我本地'
     doLast {
+
+        String currentVersion = readVersion() // 当前的版本号
+        println "当前版本号 $currentVersion"
+        def remoteVersion = getCmdResult("git ls-remote $gitRepoUrl refs/heads/$gitBranchName")
+        println "远端版本号版本号 $remoteVersion"
+
+        if (equalsWithNull(currentVersion, remoteVersion)) {
+            println "当前已经是最新版本，无需更新"
+            return
+        }
+
+        println "发现版本号有差异，立即更新"
+
         if (cloneFlutterOfflineRelay()) {
             applyAar()
             applySo()
             deleteRepo()
+            rewriteVersion(remoteVersion)
         }
     }
 }

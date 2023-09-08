@@ -12,6 +12,11 @@ ext {
 
     // 产物仓库地址
     gitRepoUrl = "ssh://git@codehub-dg-g.huawei.com:2222/zWX1245985/flutter_repo_just_for_test.git"
+    // 产物仓库查询提交记录的命令
+    gitBranchName = "master"
+
+
+
     // 仓库名称
     repoName = "flutter_repo_just_for_test"
     // 一个仓库可能存放不同的flutter项目的产物，故 使用proName来区分
